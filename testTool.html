@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình Quản Lý API HTTP LAN PV-BW3000</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-full flex flex-col">
+
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-xl text-white font-bold text-xl shadow-inner">PV</div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Trình Quản Lý API PV-BW3000</h1>
+                    <p class="text-xs text-slate-400">Công cụ giao diện API HTTP LAN v1.2 (Đã sửa lỗi & bổ sung đầy đủ)</p>
+                </div>
+            </div>
+            
+            <!-- Thanh cấu hình kết nối -->
+            <div class="flex flex-wrap items-center gap-2 bg-slate-800 p-2 rounded-xl border border-slate-700 w-full md:w-auto">
+                <div class="flex items-center space-x-1 px-2">
+                    <span class="text-xs text-slate-400 font-medium">IP:</span>
+                    <input type="text" id="devIp" value="192.168.1.100" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex items-center space-x-1 px-2">
+                    <span class="text-xs text-slate-400 font-medium">Cổng:</span>
+                    <input type="text" id="devPort" value="8090" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-16 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex items-center space-x-1 px-2">
+                    <span class="text-xs text-slate-400 font-medium">Mật khẩu:</span>
+                    <input type="password" id="devPwd" value="" placeholder="trống" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex items-center space-x-1 px-2 border-l border-slate-700">
+                    <label class="text-xs text-amber-300 flex items-center gap-1 cursor-pointer" title="Sử dụng dịch vụ proxy công khai để tránh lỗi CORS của trình duyệt">
+                        <input type="checkbox" id="useCorsProxy" class="rounded bg-slate-900 border-slate-700"> Dùng CORS Proxy
+                    </label>
+                </div>
+                <div class="flex items-center space-x-1 px-2">
+                    <span class="text-xs text-slate-400 font-medium">API Key:</span>
+                    <input type="text" id="corsApiKey" placeholder="corsproxy.io key" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-indigo-500">
+                </div>
+                <button onclick="testConnectivity()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded font-medium transition shadow">
+                    Kiểm Tra Ping
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col lg:flex-row gap-4 overflow-hidden">
+        
+        <!-- Cột trái: Điều hướng module & Điều khiển tác vụ -->
+        <div class="w-full lg:w-5/12 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <!-- Tiêu đề các Tab -->
+            <div class="flex border-b border-slate-200 bg-slate-100 overflow-x-auto">
+                <button onclick="switchTab('device')" id="tab-btn-device" class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-indigo-600 border-b-2 border-indigo-600 bg-white transition whitespace-nowrap">Thiết Bị</button>
+                <button onclick="switchTab('person')" id="tab-btn-person" class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition whitespace-nowrap">Nhân Sự</button>
+                <button onclick="switchTab('palm')" id="tab-btn-palm" class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition whitespace-nowrap">Lòng bàn tay</button>
+                <button onclick="switchTab('record')" id="tab-btn-record" class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition whitespace-nowrap">Bản Ghi</button>
+            </div>
+
+            <!-- Vùng chứa nội dung tab -->
+            <div class="flex-1 p-4 overflow-y-auto space-y-4">
+                
+                <!-- MODULE THIẾT BỊ -->
+                <div id="tab-device" class="space-y-4">
+                    <h2 class="text-sm font-bold text-slate-900 border-b pb-1">Module Quản Lý Thiết Bị</h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="callApi('GET', '/cgi-bin/js/device/get', null)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs p-2.5 rounded-xl font-medium text-left border border-indigo-200 transition">Lấy Thông Tin Thiết Bị</button>
+                        <button onclick="callApi('GET', '/cgi-bin/js/device/getSevConfig', null)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs p-2.5 rounded-xl font-medium text-left border border-indigo-200 transition">Lấy Cấu Hình Máy Chủ</button>
+                        <button onclick="callApi('GET', '/cgi-bin/js/device/getCstConfig', null)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs p-2.5 rounded-xl font-medium text-left border border-indigo-200 transition">Lấy Cấu Hình Tùy Chỉnh</button>
+                        <button onclick="rebootDevice()" class="bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs p-2.5 rounded-xl font-medium text-left border border-amber-200 transition">Khởi Động Lại Thiết Bị</button>
+                    </div>
+
+                    <!-- Đặt URL Tải Lên (Bổ sung tính năng còn thiếu theo báo cáo) -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Cấu Hình URL Tải Lên (/device/setUploadUrl)</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="uploadType" class="p-2 border rounded text-xs bg-white">
+                                <option value="1">1: Bản ghi (Record)</option>
+                                <option value="2">2: Hình ảnh (Image)</option>
+                            </select>
+                            <input type="text" id="uploadUrlVal" placeholder="http://server-ip:port/api/upload" class="p-2 border rounded text-xs bg-white">
+                        </div>
+                        <button onclick="setUploadUrl()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded font-medium">Đặt URL Tải Lên</button>
+                    </div>
+
+                    <!-- Form Đặt Mật Khẩu -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Đặt Mật Khẩu Giao Tiếp (/device/setPwd)</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="pwdOld" placeholder="Mật khẩu cũ" class="p-2 border rounded text-xs bg-white">
+                            <input type="text" id="pwdNew" placeholder="Mật khẩu mới (6-20 ký tự)" class="p-2 border rounded text-xs bg-white">
+                        </div>
+                        <button onclick="setPassword()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded font-medium">Cập Nhật Mật Khẩu</button>
+                    </div>
+
+                    <!-- Form Cấu Hình WiFi -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Cấu Hình Mạng Wi-Fi (/device/setWifi)</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="wifiSsid" placeholder="Tên SSID" class="p-2 border rounded text-xs bg-white">
+                            <input type="text" id="wifiPwd" placeholder="Mật khẩu WiFi" class="p-2 border rounded text-xs bg-white">
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs font-medium text-slate-600">Bật DHCP:</label>
+                            <select id="wifiDhcp" class="p-1 border rounded text-xs bg-white">
+                                <option value="1">1 (DHCP Tự động)</option>
+                                <option value="0">0 (IP Tĩnh)</option>
+                            </select>
+                        </div>
+                        <button onclick="setWifi()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded font-medium">Cấu Hình Wi-Fi</button>
+                    </div>
+
+                    <!-- Form Đặt Lại Thiết Bị -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Đặt Lại Thiết Bị (/device/reset)</h3>
+                        <div class="flex items-center space-x-2">
+                            <select id="resetType" class="flex-1 p-2 border rounded text-xs bg-white">
+                                <option value="1">1: Toàn bộ dữ liệu (Lòng bàn tay + Nhân sự + Bản ghi)</option>
+                                <option value="2">2: Thông tin nhân sự & Dữ liệu lòng bàn tay liên kết</option>
+                                <option value="4">4: Chỉ tính năng vân mạch máu lòng bàn tay</option>
+                                <option value="5">5: Chỉ bản ghi nhận diện</option>
+                            </select>
+                            <button onclick="resetDevice()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs px-3 py-2 rounded font-medium">Đặt Lại</button>
+                        </div>
+                    </div>
+
+                    <!-- Kích Hoạt Sự Kiện Thiết Bị -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Kích Hoạt Sự Kiện Thiết Bị (/device/event)</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="eventKey" class="p-2 border rounded text-xs bg-white">
+                                <option value="setVolume">setVolume (Chỉnh âm lượng)</option>
+                                <option value="addPalm">addPalm (Thêm lòng bàn tay)</option>
+                            </select>
+                            <input type="text" id="eventValue" placeholder="Giá trị (VD: 80 hoặc EMP_001)" class="p-2 border rounded text-xs bg-white">
+                        </div>
+                        <button onclick="triggerEvent()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded font-medium">Kích Hoạt Sự Kiện</button>
+                    </div>
+                </div>
+
+                <!-- MODULE NHÂN SỰ -->
+                <div id="tab-person" class="space-y-4 hidden">
+                    <h2 class="text-sm font-bold text-slate-900 border-b pb-1">Module Quản Lý Nhân Sự</h2>
+                    
+                    <!-- Truy Vấn Danh Sách / Đơn -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Truy Vấn Nhân Sự</h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="personFindKey" placeholder="Mã nhân sự SN (VD: EMP_001)" class="flex-1 p-2 border rounded text-xs bg-white">
+                            <button onclick="findPerson()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-2 rounded font-medium">Tìm Một</button>
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <input type="number" id="personIndex" value="1" placeholder="Trang" class="w-20 p-2 border rounded text-xs bg-white">
+                            <input type="number" id="personLength" value="20" placeholder="Độ dài" class="w-20 p-2 border rounded text-xs bg-white">
+                            <button onclick="findPersonList()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded font-medium">Truy Vấn Phân Trang</button>
+                        </div>
+                    </div>
+
+                    <!-- Tạo hoặc Cập Nhật Nhân Sự (Gộp) -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Tạo Hoặc Cập Nhật Nhân Sự (Merge)</h3>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" id="mergesn" placeholder="Mã SN" class="p-2 border rounded text-xs bg-white">
+                            <input type="text" id="mergename" placeholder="Họ và tên" class="p-2 border rounded text-xs bg-white">
+                            <select id="mergetype" class="p-2 border rounded text-xs bg-white">
+                                <option value="1">1: Nhân viên</option>
+                                <option value="2">2: Khách</option>
+                                <option value="3">3: Danh sách đen</option>
+                            </select>
+                        </div>
+                        <button onclick="mergePerson()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2 rounded font-medium">Lưu Nhân Sự</button>
+                    </div>
+
+                    <!-- Tạo Hàng Loạt Nhân Sự (Bổ sung mới) -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Tạo Hàng Loạt Nhân Sự (/person/createBatch)</h3>
+                        <textarea id="batchPersonsJson" rows="3" placeholder='[{"sn":"EMP_001","name":"Nguyen Van A","type":1},{"sn":"EMP_002","name":"Tran Thi B","type":1}]' class="w-full p-2 border rounded text-xs bg-white font-mono"></textarea>
+                        <button onclick="createBatchPersons()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded font-medium">Tạo Hàng Loạt</button>
+                    </div>
+
+                    <!-- Xóa Nhân Sự -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Xóa Nhân Sự</h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="delPersonSns" placeholder="Các mã SN cách nhau bằng dấu phẩy (EMP_001,EMP_002)" class="flex-1 p-2 border rounded text-xs bg-white">
+                            <button onclick="deletePersons()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs px-3 py-2 rounded font-medium">Xóa</button>
+                        </div>
+                        <button onclick="clearAllPersons()" class="w-full bg-rose-700 hover:bg-rose-600 text-white text-xs py-2 rounded font-medium">Xóa Sạch Tất Cả Nhân Sự (Nguy Hiểm)</button>
+                    </div>
+                </div>
+
+                <!-- MODULE LÒNG BÀN TAY -->
+                <div id="tab-palm" class="space-y-4 hidden">
+                    <h2 class="text-sm font-bold text-slate-900 border-b pb-1">Module Quản Lý Lòng Bàn Tay</h2>
+                    
+                    <!-- Xác Thực & Đăng Ký Từ Xa -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Xác Thực Trạng Thái Lòng Bàn Tay</h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="valPersonSn" placeholder="Mã nhân sự SN" class="flex-1 p-2 border rounded text-xs bg-white">
+                            <button onclick="validatePalmStatus()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-2 rounded font-medium">Xác Thực</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Kích Hoạt Đăng Ký Lòng Bàn Tay Từ Xา (/palm/register)</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="regPersonSn" placeholder="Mã nhân sự SN" class="p-2 border rounded text-xs bg-white">
+                            <input type="text" id="regName" placeholder="Tên (tùy chọn)" class="p-2 border rounded text-xs bg-white">
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-slate-600">Bàn tay:</span>
+                            <label class="text-xs"><input type="checkbox" id="regHand1" checked value="1"> Trái (1)</label>
+                            <label class="text-xs"><input type="checkbox" id="regHand2" value="2"> Phải (2)</label>
+                        </div>
+                        <button onclick="triggerPalmRegistration()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2 rounded font-medium">Bắt Đầu Đăng Ký Trên Thiết Bị</button>
+                    </div>
+
+                    <!-- Truy Vấn Danh Sách Lòng Bàn Tay -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Truy Vấn Dữ Liệu Lòng Bàn Tay</h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="palmFilterSn" placeholder="Lọc theo mã nhân sự SN (tùy chọn)" class="flex-1 p-2 border rounded text-xs bg-white">
+                            <button onclick="findPalmList()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded font-medium">Truy Vấn Danh Sách</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE BẢN GHI NHẬN DIỆN -->
+                <div id="tab-record" class="space-y-4 hidden">
+                    <h2 class="text-sm font-bold text-slate-900 border-b pb-1">Module Bản Ghi Nhận Diện</h2>
+                    
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Truy Vấn Bản Ghi Nhận Diện (/record/findList)</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="recIndex" value="1" placeholder="Trang số" class="p-2 border rounded text-xs bg-white">
+                            <input type="number" id="recLength" value="20" placeholder="Số lượng mục" class="p-2 border rounded text-xs bg-white">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="recStartTime" placeholder="Thời gian bắt đầu (ms)" class="p-2 border rounded text-xs bg-white">
+                            <input type="text" id="recEndTime" placeholder="Thời gian kết thúc (ms)" class="p-2 border rounded text-xs bg-white">
+                        </div>
+                        <button onclick="findRecords()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs py-2 rounded font-medium">Truy Vấn Bản Ghi</button>
+                    </div>
+
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-700">Xóa Bản Ghi (/record/delete)</h3>
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs"><input type="checkbox" id="delAllRecords" onchange="toggleDelAll()"> Xóa Tất Cả Bản Ghi</label>
+                        </div>
+                        <input type="text" id="delRecordId" placeholder="ID Bản ghi (xóa đơn lẻ tùy chọn)" class="w-full p-2 border rounded text-xs bg-white">
+                        <button onclick="deleteRecords()" class="w-full bg-rose-600 hover:bg-rose-500 text-white text-xs py-2 rounded font-medium">Thực Thi Xóa</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Cột phải: Trình kiểm tra phản hồi API & Console -->
+        <div class="w-full lg:w-7/12 flex flex-col bg-slate-900 rounded-2xl shadow-sm border border-slate-800 overflow-hidden">
+            <div class="bg-slate-800 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-500" id="statusIndicator"></span>
+                    <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Trình Kiểm Tra Phản Hồi & Xem Dữ Liệu</h2>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="toggleViewMode('json')" id="modeJsonBtn" class="text-xs px-2 py-1 bg-indigo-600 text-white rounded font-medium">JSON</button>
+                    <button onclick="toggleViewMode('table')" id="modeTableBtn" class="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded font-medium">Dạng Bảng</button>
+                    <button onclick="clearConsole()" class="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-700 rounded transition">Xóa</button>
+                </div>
+            </div>
+
+            <!-- Vùng hiển thị đầu ra JSON / Bảng -->
+            <div class="flex-1 p-4 overflow-auto font-mono text-xs text-emerald-400 bg-slate-950" id="responseOutput">
+                // Phản hồi API và nhật ký thô sẽ được hiển thị ở đây dưới định dạng JSON...
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let lastApiResponse = null;
+        let currentViewMode = 'json';
+
+        function switchTab(tabName) {
+            ['device', 'person', 'palm', 'record'].forEach(t => {
+                document.getElementById('tab-' + t).classList.add('hidden');
+                document.getElementById('tab-btn-' + t).className = "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition whitespace-nowrap";
+            });
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            document.getElementById('tab-btn-' + tabName).className = "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-indigo-600 border-b-2 border-indigo-600 bg-white transition whitespace-nowrap";
+        }
+
+        function getApiConfig() {
+            const ip = document.getElementById('devIp').value.trim();
+            const port = document.getElementById('devPort').value.trim();
+            const pwd = document.getElementById('devPwd').value;
+            const useProxy = document.getElementById('useCorsProxy').checked;
+            const apiKey = document.getElementById('corsApiKey').value.trim();
+            
+            let baseUrl = `https://${ip}:${port}`;
+            const authString = btoa("admin:" + pwd);
+            
+            return {
+                baseUrl,
+                useProxy,
+                apiKey,
+                headers: {
+                    'Content-Type': 'application/json; charset=UTF-8',
+                    'Authorization': `Basic ${authString}`
+                }
+            };
+        }
+
+        async function callApi(method, endpoint, bodyData) {
+            const outputEl = document.getElementById('responseOutput');
+            const statusEl = document.getElementById('responseStatus') || { textContent: '' };
+            const indicatorEl = document.getElementById('statusIndicator');
+            
+            const config = getApiConfig();
+            let targetUrl = config.baseUrl + endpoint;
+            let finalUrl = targetUrl;
+            
+            if (config.useProxy) {
+                if (config.apiKey) {
+                    finalUrl = `https://corsproxy.io/?key=${encodeURIComponent(config.apiKey)}&url=` + encodeURIComponent(targetUrl);
+                } else {
+                    finalUrl = `https://corsproxy.io/?` + encodeURIComponent(targetUrl);
+                }
+            }
+            
+            outputEl.textContent = `Đang gửi yêu cầu ${method} tới:\nĐích: ${targetUrl}\n${config.useProxy ? 'Qua Proxy: ' + finalUrl + '\n' : ''}Dữ liệu tải lên:\n${bodyData ? JSON.stringify(bodyData, null, 2) : 'Không có'}`;
+            indicatorEl.className = "inline-block w-3 h-3 rounded-full bg-amber-500 animate-pulse";
+
+            try {
+                const options = {
+                    method: method,
+                    headers: config.headers
+                };
+                if (bodyData && (method === 'POST' || method === 'PUT')) {
+                    options.body = JSON.stringify(bodyData);
+                }
+
+                const response = await fetch(finalUrl, options);
+                const textData = await response.text();
+                
+                let json;
+                try {
+                    json = JSON.parse(textData);
+                } catch(e) {
+                    json = { 
+                        rawResponse: textData,
+                        note: "Phản hồi không phải JSON hoặc bị chặn CORS." 
+                    };
+                }
+                
+                lastApiResponse = json;
+                renderOutput();
+                
+                if (response.ok && (json.code === "000" || !json.error)) {
+                    indicatorEl.className = "inline-block w-3 h-3 rounded-full bg-emerald-500";
+                } else {
+                    indicatorEl.className = "inline-block w-3 h-3 rounded-full bg-rose-500";
+                }
+            } catch (error) {
+                outputEl.textContent = `Lỗi thực thi yêu cầu:\n${error.message}\n\n` +
+                    `⚠️ HƯỚNG DẪN XỬ LÝ LỖI MẠNG / CORS:\n` +
+                    `1. Hãy chắc chắn thiết bị IP LAN cùng mạng với máy tính của bạn.\n` +
+                    `2. Thêm khóa API của corsproxy.io nếu sử dụng dịch vụ này.\n` +
+                    `3. Hoặc chạy Chrome bỏ qua CORS trên máy tính cục bộ:\n` +
+                    `   start chrome --disable-web-security --user-data-dir="C:\\ChromeDevSession"`;
+                indicatorEl.className = "inline-block w-3 h-3 rounded-full bg-rose-500";
+            }
+        }
+
+        function toggleViewMode(mode) {
+            currentViewMode = mode;
+            if (mode === 'json') {
+                document.getElementById('modeJsonBtn').className = "text-xs px-2 py-1 bg-indigo-600 text-white rounded font-medium";
+                document.getElementById('modeTableBtn').className = "text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded font-medium";
+            } else {
+                document.getElementById('modeJsonBtn').className = "text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded font-medium";
+                document.getElementById('modeTableBtn').className = "text-xs px-2 py-1 bg-indigo-600 text-white rounded font-medium";
+            }
+            renderOutput();
+        }
+
+        function renderOutput() {
+            const outputEl = document.getElementById('responseOutput');
+            if (!lastApiResponse) {
+                outputEl.textContent = "// Chưa có dữ liệu phản hồi.";
+                return;
+            }
+
+            if (currentViewMode === 'json') {
+                outputEl.textContent = JSON.stringify(lastApiResponse, null, 2);
+            } else {
+                // Thử chuyển kết quả mảng/dữ liệu thành dạng bảng HTML gọn gàng
+                let dataList = lastApiResponse.list || lastApiResponse.data || (Array.isArray(lastApiResponse) ? lastApiResponse : null);
+                if (!dataList && typeof lastApiResponse === 'object') {
+                    // Nếu là object đơn, bọc thành mảng 1 phần tử
+                    dataList = [lastApiResponse];
+                }
+
+                if (!Array.isArray(dataList) || dataList.length === 0) {
+                    outputEl.innerHTML = `<div class="text-amber-400 p-2">Không tìm thấy dữ liệu mảng cấu trúc để hiển thị dạng bảng. Dữ liệu thô:<br><pre>${JSON.stringify(lastApiResponse, null, 2)}</pre></div>`;
+                    return;
+                }
+
+                const keys = Object.keys(dataList[0]);
+                let html = '<div class="overflow-x-auto"><table class="w-full text-left border-collapse border border-slate-700 text-xs"><thead><tr class="bg-slate-900 text-slate-300">';
+                keys.forEach(k => html += `<th class="border border-slate-700 p-1.5">${k}</th>`);
+                html += '</tr></thead><tbody>';
+
+                dataList.forEach(item => {
+                    html += '<tr class="hover:bg-slate-900">';
+                    keys.forEach(k => {
+                        let val = item[k];
+                        if (typeof val === 'object') val = JSON.stringify(val);
+                        html += `<td class="border border-slate-800 p-1.5 text-slate-300">${val !== undefined ? val : ''}</td>`;
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+                outputEl.innerHTML = html;
+            }
+        }
+
+        function clearConsole() {
+            lastApiResponse = null;
+            document.getElementById('responseOutput').textContent = "// Đã xóa bảng điều khiển.";
+        }
+
+        // Các hàm bọc API
+        async function testConnectivity() {
+            await callApi('GET', '/cgi-bin/js/device/test', null);
+        }
+
+        async function setUploadUrl() {
+            const type = parseInt(document.getElementById('uploadType').value);
+            const url = document.getElementById('uploadUrlVal').value.trim();
+            await callApi('POST', '/cgi-bin/js/device/setUploadUrl', [{ type, url }]);
+        }
+
+        async function setPassword() {
+            const oldPwd = document.getElementById('pwdOld').value;
+            const newPwd = document.getElementById('pwdNew').value;
+            await callApi('POST', '/cgi-bin/js/device/setPwd', { oldPwd, newPwd });
+        }
+
+        async function rebootDevice() {
+            if (confirm("Khởi động lại thiết bị phần cứng?")) {
+                await callApi('POST', '/cgi-bin/js/device/reboot', {});
+            }
+        }
+
+        async function setWifi() {
+            const ssid = document.getElementById('wifiSsid').value;
+            const pwd = document.getElementById('wifiPwd').value;
+            const dhcpEnable = parseInt(document.getElementById('wifiDhcp').value);
+            await callApi('POST', '/cgi-bin/js/device/setWifi', { ssid, pwd, dhcpEnable });
+        }
+
+        async function resetDevice() {
+            const type = parseInt(document.getElementById('resetType').value);
+            if (confirm("CẢNH BÁO NGUY HIỂM: Thao tác này sẽ xóa sạch dữ liệu trên thiết bị!")) {
+                await callApi('POST', '/cgi-bin/js/device/reset', { type });
+            }
+        }
+
+        async function triggerEvent() {
+            const key = document.getElementById('eventKey').value;
+            const value = document.getElementById('eventValue').value;
+            await callApi('POST', '/cgi-bin/js/device/event', { key, value });
+        }
+
+        async function findPerson() {
+            const key = document.getElementById('personFindKey').value;
+            await callApi('POST', '/cgi-bin/js/person/find', { key });
+        }
+
+        async function findPersonList() {
+            const index = parseInt(document.getElementById('personIndex').value) || 1;
+            const length = parseInt(document.getElementById('personLength').value) || 20;
+            await callApi('POST', '/cgi-bin/js/person/findList', { index, length });
+        }
+
+        async function mergePerson() {
+            const sn = document.getElementById('mergesn').value;
+            const name = document.getElementById('mergename').value;
+            const type = parseInt(document.getElementById('mergetype').value);
+            await callApi('POST', '/cgi-bin/js/person/merge', { sn, name, type });
+        }
+
+        async function createBatchPersons() {
+            try {
+                const raw = document.getElementById('batchPersonsJson').value.trim();
+                const jsonArr = JSON.parse(raw);
+                await callApi('POST', '/cgi-bin/js/person/createBatch', jsonArr);
+            } catch (err) {
+                alert("Định dạng JSON nhập vào không hợp lệ: " + err.message);
+            }
+        }
+
+        async function deletePersons() {
+            const snsRaw = document.getElementById('delPersonSns').value;
+            const sns = snsRaw.split(',').map(s => s.trim()).filter(Boolean);
+            await callApi('POST', '/cgi-bin/js/person/delete', { sns });
+        }
+
+        async function clearAllPersons() {
+            if (confirm("HỦY DIỆT: Xóa toàn bộ dữ liệu nhân sự?")) {
+                await callApi('POST', '/cgi-bin/js/person/empty', {});
+            }
+        }
+
+        async function validatePalmStatus() {
+            const personSn = document.getElementById('valPersonSn').value;
+            await callApi('POST', '/cgi-bin/js/palm/validatePersonSn', { personSn });
+        }
+
+        async function triggerPalmRegistration() {
+            const personSn = document.getElementById('regPersonSn').value;
+            const name = document.getElementById('regName').value;
+            const palmNums = [];
+            if (document.getElementById('regHand1').checked) palmNums.push(1);
+            if (document.getElementById('regHand2').checked) palmNums.push(2);
+            
+            const body = { personSn, palmNums };
+            if (name) body.name = name;
+            await callApi('POST', '/cgi-bin/js/palm/register', body);
+        }
+
+        async function findPalmList() {
+            const personSn = document.getElementById('palmFilterSn').value;
+            const body = { index: 1, length: 20 };
+            if (personSn) body.personSn = personSn;
+            await callApi('POST', '/cgi-bin/js/palm/findList', body);
+        }
+
+        async function findRecords() {
+            const index = parseInt(document.getElementById('recIndex').value) || 1;
+            const length = parseInt(document.getElementById('recLength').value) || 20;
+            const body = { index, length };
+            const startTime = document.getElementById('recStartTime').value;
+            const endTime = document.getElementById('recEndTime').value;
+            if (startTime) body.startTime = parseInt(startTime);
+            if (endTime) body.endTime = parseInt(endTime);
+            await callApi('POST', '/cgi-bin/js/record/findList', body);
+        }
+
+        function toggleDelAll() {
+            const isChecked = document.getElementById('delAllRecords').checked;
+            document.getElementById('delRecordId').disabled = isChecked;
+        }
+
+        async function deleteRecords() {
+            const deleteAll = document.getElementById('delAllRecords').checked;
+            const body = {};
+            if (deleteAll) {
+                body.deleteAll = true;
+            } else {
+                const id = document.getElementById('delRecordId').value;
+                if (id) body.id = parseInt(id);
+            }
+            await callApi('POST', '/cgi-bin/js/record/delete', body);
+        }
+    </script>
+</body>
+</html>
